@@ -199,6 +199,7 @@ set (THIRD_PARTY_DEPENDENCIES
     spirv-cross-msl
     spirv-cross-hlsl
     tinygltf
+    TheForge
 )
 
 if (URHO3D_MERGE_STATIC_LIBS)
@@ -220,14 +221,12 @@ foreach (dep ${THIRD_PARTY_DEPENDENCIES})
         # to export third party lib targets in a monolithic dll build.
         get_target_property(_TARGET_TYPE ${dep} TYPE)
         if (${_TARGET_TYPE} STREQUAL "STATIC_LIBRARY")
-            if (BUILD_SHARED_LIBS)
+            if (BUILD_SHARED_LIBS OR UWP)
                 if (MSVC)
                     set_property(TARGET Urho3D APPEND_STRING PROPERTY LINK_FLAGS " /WHOLEARCHIVE:${dep}")
                 elseif (APPLE)
                     set_property(TARGET Urho3D APPEND PROPERTY LINK_LIBRARIES -force_load ${dep})
                 endif ()
-            elseif (UWP)
-                set_property(TARGET Urho3D APPEND_STRING PROPERTY LINK_FLAGS " /WHOLEARCHIVE:${dep}")
             endif ()
         endif ()
         get_target_property(VALUE ${dep} INTERFACE_COMPILE_DEFINITIONS)
@@ -367,7 +366,7 @@ if (BUILD_SHARED_LIBS)
         PRIVATE -DURHO3D_EXPORTS=1 -DAL_EXPORTS=1 -DBOX2D_EXPORTS=1 -DCIVETWEB_DLL_EXPORTS=1 -DEASTL_EXPORTS=1
             -DEASTDC_EXPORTS=1 -DURHO3D_EXPORTS=1 -DFMT_EXPORT=1 -DGLEW_BUILD=1 -DIMGUI_EXPORTS=1
             -DLZ4_DLL_EXPORT=1 -DNFD_EXPORTS=1 -DPUGIXML_EXPORTS=1 -DSDL_EXPORTS=1 -DTRACY_EXPORTS=1 -DRmlCore_EXPORTS=1
-            -DRmlDebugger_EXPORTS=1
+            -DRmlDebugger_EXPORTS=1 -DTF_DLL_EXPORT=1
     )
 else ()
     target_compile_definitions (Urho3D PUBLIC -DURHO3D_STATIC)

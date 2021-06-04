@@ -97,6 +97,16 @@ if (NOT MINI_URHO)
         set (SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "")
         set (SPIRV_CROSS_SKIP_INSTALL ON CACHE BOOL "")
         add_subdirectory(SPIRV-Cross)
+
+        if (MINGW)
+            # MinGW builds not supported at all at the moment, ID3D11ShaderReflection GUID is not declared in MinGW SDK.
+        elseif (MINGW AND NOT URHO3D_GRAPHICS_API STREQUAL D3D11)
+            # Only D3D11 on MinGW.
+        elseif (WEB)
+            # Web unsupported at all.
+        else ()
+            add_subdirectory(TheForge)
+        endif ()
     endif ()
 
     if (URHO3D_SYSTEMUI)

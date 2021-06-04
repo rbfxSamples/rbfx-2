@@ -54,7 +54,7 @@ endforeach()
 include(CMakeDependentOption)
 
 # Set platform variables
-if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND NOT WEB)
     set (LINUX ON CACHE BOOL "" FORCE)
 endif ()
 
@@ -171,7 +171,7 @@ if (URHO3D_GLES2 OR URHO3D_GLES3)
     set (URHO3D_OPENGL ON)
 endif ()
 
-cmake_dependent_option(URHO3D_SPIRV "Enable universal GLSL shaders for other GAPIs via glslang and SpirV" ON "URHO3D_D3D11" OFF)
+cmake_dependent_option(URHO3D_SPIRV "Enable universal GLSL shaders for other GAPIs via glslang and SpirV" ON "" OFF)    # TODO: add back URHO3D_D3D11
 # Whether to use legacy renderer. DX11 doesn't support legacy renderer. DX9 supports only legacy renderer.
 cmake_dependent_option(URHO3D_LEGACY_RENDERER "Use legacy renderer by default" OFF "URHO3D_OPENGL" OFF)
 if (URHO3D_D3D9)

@@ -116,6 +116,7 @@ rbfx uses the following third-party libraries:
 - RmlUi (https://github.com/mikke89/RmlUi)
 - catch2 3.0.0 (https://github.com/catchorg/Catch2)
 - TinyGLTF 2.4.0 (https://github.com/syoyo/tinygltf)
+- TheForge 1.48 (https://github.com/ConfettiFX/The-Forge)
 
 rbfx optionally uses the following external third-party libraries:
 - Mono (http://www.mono-project.com/download/stable/)

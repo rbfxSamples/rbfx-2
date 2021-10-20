@@ -46,6 +46,10 @@ add_subdirectory(SDL)
 add_subdirectory(ETCPACK)
 
 if (NOT MINI_URHO)
+    if (NOT URHO3D_OPENGL)
+        add_subdirectory(nvrhi)
+    endif ()
+
     if (URHO3D_TESTING)
         add_subdirectory(catch2)
     endif ()

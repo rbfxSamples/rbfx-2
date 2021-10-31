@@ -40,7 +40,7 @@ option(NVRHI_WITH_RTXMU "Use RTXMU for acceleration structure management" OFF)
 
 cmake_dependent_option(NVRHI_WITH_NVAPI "Include NVAPI support (requires NVAPI SDK)" OFF "WIN32" OFF)
 cmake_dependent_option(NVRHI_WITH_DX11 "Build the NVRHI D3D11 backend" ON "WIN32" OFF)
-cmake_dependent_option(NVRHI_WITH_DX12 "Build the NVRHI D3D12 backend" ON "WIN32" OFF)
+cmake_dependent_option(NVRHI_WITH_DX12 "Build the NVRHI D3D12 backend" OFF "WIN32" OFF)
 
 # if (MSVC)
 #     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /MP")

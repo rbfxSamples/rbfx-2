@@ -169,7 +169,7 @@ namespace nvrhi::d3d12
 
         if (flags == CpuAccessMode::Read)
         {
-            range = { 0, b->desc.byteSize };
+            range = { 0, (SIZE_T)b->desc.byteSize };    // rbfx: fix for UWP
         } else {
             range = { 0, 0 };
         }

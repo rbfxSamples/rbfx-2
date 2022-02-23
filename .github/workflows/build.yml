@@ -54,504 +54,504 @@ jobs:
           discord-filter: "'{{ github.branch }}' == 'master'"
           discord-username: GitHub
 
-  Windows:
-    if: github.event.pull_request.draft == false
-    runs-on: windows-2019
-    needs: [CheckSkipCI]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        ci_arch:
-          - x64
-          - x86
-        ci_lib_type:
-          - dll
-          - lib
-        ci_build_type:
-          - dbg
-          - rel
-        ci_compiler:
-          - msvc
-          - mingw
-
-    env:
-      ci_platform: windows
-      ci_arch: ${{ matrix.ci_arch }}
-      ci_lib_type: ${{ matrix.ci_lib_type }}
-      ci_build_type: ${{ matrix.ci_build_type }}
-      ci_compiler: ${{ matrix.ci_compiler }}
-      ci_artifacts: ${{ (
-                          github.ref == 'refs/heads/master'           ||
-                          startsWith(github.ref, 'refs/tags/nuget/')  ||
-                          startsWith(github.ref, 'refs/heads/nuget/')
-                        )                                             &&
-                        (matrix.ci_build_type == 'rel')               &&
-                        (matrix.ci_arch == 'x64')                     &&
-                        (matrix.ci_lib_type == 'dll')                 &&
-                        (matrix.ci_compiler == 'msvc')
-                    }}
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: ${{ env.ci_source_dir }}
-          fetch-depth: 1
-
-      - name: Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        if: matrix.ci_lib_type == 'dll'
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup cmake
-        # FIXME: CMake installed by this action fails with MinGW because it can find 'C:/Program Files/Git/usr/bin/sh.exe' on PATH.
-        if: matrix.ci_compiler != 'mingw'
-        uses: jwlawson/actions-setup-cmake@v1.8
-        with:
-          cmake-version: '${{ env.CMAKE_VERSION }}'
-
-      - name: Dependencies
-        shell: bash
-        run: ${{ env.ci_build_script }} dependencies
-
-      - name: Generate
-        shell: bash
-        run: ${{ env.ci_build_script }} generate
-
-      - name: Build
-        shell: bash
-        run: ${{ env.ci_build_script }} build-${{ env.ci_compiler }}
-
-      - name: Test
-        if: matrix.ci_compiler == 'msvc'
-        shell: bash
-        run: ${{ env.ci_build_script }} test
-
-      - name: Install
-        shell: bash
-        run: ${{ env.ci_build_script }} install
-
-      - uses: actions/upload-artifact@v2
-        if: env.ci_artifacts == 'true'
-        with:
-          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
-          path: ${{ env.ci_sdk_dir }}
-
-  UWP:
-    if: github.event.pull_request.draft == false
-    runs-on: windows-2019
-    needs: [CheckSkipCI]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        ci_arch:
-          - x64
-          - arm
-          - arm64
-        ci_lib_type:
-          - dll
-          - lib
-        ci_build_type:
-          - dbg
-          - rel
-        ci_compiler:
-          - msvc
-
-    env:
-      ci_platform: uwp
-      ci_arch: ${{ matrix.ci_arch }}
-      ci_lib_type: ${{ matrix.ci_lib_type }}
-      ci_build_type: ${{ matrix.ci_build_type }}
-      ci_compiler: ${{ matrix.ci_compiler }}
-      ci_artifacts: ${{ (
-                          github.ref == 'refs/heads/master'           ||
-                          startsWith(github.ref, 'refs/tags/nuget/')  ||
-                          startsWith(github.ref, 'refs/heads/nuget/')
-                        )                                             &&
-                        (matrix.ci_build_type == 'rel')               &&
-                        (matrix.ci_arch == 'x64')                     &&
-                        (matrix.ci_lib_type == 'dll')                 &&
-                        (matrix.ci_compiler == 'msvc')
-                    }}
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: ${{ env.ci_source_dir }}
-          fetch-depth: 1
-
-      - name: Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.CLCACHE_DIR }}
-          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        if: matrix.ci_lib_type == 'dll'
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.8
-        with:
-          cmake-version: '${{ env.CMAKE_VERSION }}'
-
-      - name: Dependencies
-        shell: bash
-        run: ${{ env.ci_build_script }} dependencies
-
-      - name: Generate
-        shell: bash
-        run: ${{ env.ci_build_script }} generate
-
-      - name: Build
-        shell: bash
-        run: ${{ env.ci_build_script }} build-${{ env.ci_compiler }}
-
-      - name: Install
-        shell: bash
-        run: ${{ env.ci_build_script }} install
-
-      - uses: actions/upload-artifact@v2
-        if: env.ci_artifacts == 'true'
-        with:
-          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
-          path: ${{ env.ci_sdk_dir }}
-
-  Linux:
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-20.04
-    needs: [CheckSkipCI]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        ci_arch:
-          - x64
-          # - x86           # TODO: Build script does not implement this fully.
-        ci_lib_type:
-          - dll
-          - lib
-        ci_build_type:
-          - dbg
-          - rel
-        ci_compiler:
-          - gcc
-          - clang
-
-    env:
-      ci_platform: linux
-      ci_arch: ${{ matrix.ci_arch }}
-      ci_lib_type: ${{ matrix.ci_lib_type }}
-      ci_build_type: ${{ matrix.ci_build_type }}
-      ci_compiler: ${{ matrix.ci_compiler }}
-      ci_artifacts: ${{ (
-                          github.ref == 'refs/heads/master'           ||
-                          startsWith(github.ref, 'refs/tags/nuget/')  ||
-                          startsWith(github.ref, 'refs/heads/nuget/')
-                        )                                             &&
-                        (matrix.ci_build_type == 'rel')               &&
-                        (matrix.ci_arch == 'x64')                     &&
-                        (matrix.ci_lib_type == 'dll')                 &&
-                        (matrix.ci_compiler == 'gcc')
-                    }}
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: ${{ env.ci_source_dir }}
-          fetch-depth: 1
-
-      - name: Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        if: matrix.ci_lib_type == 'dll'
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.8
-        with:
-          cmake-version: '${{ env.CMAKE_VERSION }}'
-
-      - name: Dependencies
-        shell: bash
-        run: ${{ env.ci_build_script }} dependencies
-
-      - name: Generate
-        shell: bash
-        run: ${{ env.ci_build_script }} generate
-
-      - name: Build
-        shell: bash
-        run: ${{ env.ci_build_script }} build
-
-      - name: Test
-        shell: bash
-        run: ${{ env.ci_build_script }} test
-
-      - name: Install
-        shell: bash
-        run: ${{ env.ci_build_script }} install
-
-      - uses: actions/upload-artifact@v2
-        if: env.ci_artifacts == 'true'
-        with:
-          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
-          path: ${{ env.ci_sdk_dir }}
-
-  MacOS:
-    if: github.event.pull_request.draft == false
-    runs-on: macos-11
-    needs: [CheckSkipCI]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        ci_arch:
-          - x64
-          # - x86           # TODO: Untested.
-        ci_lib_type:
-          - dll
-          - lib
-        ci_build_type:
-          - dbg
-          - rel
-        ci_compiler:
-          - clang
-
-    env:
-      ci_platform: macos
-      ci_arch: ${{ matrix.ci_arch }}
-      ci_lib_type: ${{ matrix.ci_lib_type }}
-      ci_build_type: ${{ matrix.ci_build_type }}
-      ci_compiler: ${{ matrix.ci_compiler }}
-      ci_artifacts: ${{ (
-                          github.ref == 'refs/heads/master'           ||
-                          startsWith(github.ref, 'refs/tags/nuget/')  ||
-                          startsWith(github.ref, 'refs/heads/nuget/')
-                        )                                             &&
-                        (matrix.ci_build_type == 'rel')               &&
-                        (matrix.ci_arch == 'x64')                     &&
-                        (matrix.ci_lib_type == 'dll')                 &&
-                        (matrix.ci_compiler == 'clang')
-                    }}
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: ${{ env.ci_source_dir }}
-          fetch-depth: 1
-
-      - name: Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}
-
-      - name: Bash
-        shell: bash
-        run: brew install bash
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        if: matrix.ci_lib_type == 'dll'
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.8
-        with:
-          cmake-version: '${{ env.CMAKE_VERSION }}'
-
-      - name: Dependencies
-        shell: bash
-        run: ${{ env.ci_build_script }} dependencies
-
-      - name: Generate
-        shell: bash
-        run: ${{ env.ci_build_script }} generate
-
-      - name: Build
-        shell: bash
-        run: ${{ env.ci_build_script }} build
-
-      - name: Install
-        shell: bash
-        run: ${{ env.ci_build_script }} install
-
-      - uses: actions/upload-artifact@v2
-        if: env.ci_artifacts == 'true'
-        with:
-          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
-          path: ${{ env.ci_sdk_dir }}
-
-  Android:
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-20.04
-    needs: [CheckSkipCI]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        ci_build_type:
-          - dbg
-          - rel
-
-    env:
-      ci_platform: android
-      ci_arch: ${{ matrix.ci_arch }}
-      ci_lib_type: ${{ matrix.ci_lib_type }}
-      ci_build_type: ${{ matrix.ci_build_type }}
-      ci_compiler: ${{ matrix.ci_compiler }}
-      ci_artifacts: ${{ (
-                          github.ref == 'refs/heads/master'           ||
-                          startsWith(github.ref, 'refs/tags/nuget/')  ||
-                          startsWith(github.ref, 'refs/heads/nuget/')
-                        )                                             &&
-                        (matrix.ci_build_type == 'rel')
-                    }}
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: ${{ env.ci_source_dir }}
-          fetch-depth: 1
-
-      - name: Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_build_type }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_build_type }}
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        if: matrix.ci_lib_type == 'dll'
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.8
-        with:
-          cmake-version: '${{ env.CMAKE_VERSION }}'
-
-      - name: Dependencies
-        shell: bash
-        run: ${{ env.ci_build_script }} dependencies
-
-      - name: Generate
-        shell: bash
-        run: ${{ env.ci_build_script }} generate
-
-      - name: Build
-        shell: bash
-        run: ${{ env.ci_build_script }} build-android
-
-      - uses: actions/upload-artifact@v2
-        if: env.ci_artifacts == 'true'
-        with:
-          name: 'rbfx-${{ github.job }}-${{ github.sha }}'
-          path: '**/*.apk'
-
-  iOS:
-    if: github.event.pull_request.draft == false
-    runs-on: macos-11
-    needs: [CheckSkipCI]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        ci_lib_type:
-          # - dll           # TODO: Linker error failing to find SDL_main.
-          - lib
-        ci_build_type:
-          - dbg
-          - rel
-
-    env:
-      ci_platform: ios
-      ci_arch: ${{ matrix.ci_arch }}
-      ci_lib_type: ${{ matrix.ci_lib_type }}
-      ci_build_type: ${{ matrix.ci_build_type }}
-      ci_compiler: ${{ matrix.ci_compiler }}
-      ci_artifacts: ${{ (
-                          github.ref == 'refs/heads/master'           ||
-                          startsWith(github.ref, 'refs/tags/nuget/')  ||
-                          startsWith(github.ref, 'refs/heads/nuget/')
-                        )                                             &&
-                        (matrix.ci_build_type == 'rel')
-                    }}
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: ${{ env.ci_source_dir }}
-          fetch-depth: 1
-
-      - name: Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ github.sha }}
-          restore-keys: |
-            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}
-
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
-        if: matrix.ci_lib_type == 'dll'
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.8
-        with:
-          cmake-version: '${{ env.CMAKE_VERSION }}'
-
-      - name: Bash
-        shell: bash
-        run: brew install bash
-
-      - name: Dependencies
-        shell: bash
-        run: ${{ env.ci_build_script }} dependencies
-
-      - name: Generate
-        shell: bash
-        run: ${{ env.ci_build_script }} generate
-
-      - name: Build
-        shell: bash
-        run: ${{ env.ci_build_script }} build
-
-      - uses: actions/upload-artifact@v2
-        if: env.ci_artifacts == 'true'
-        with:
-          name: 'rbfx-${{ github.job }}-${{ github.sha }}'
-          path: '**/*.app'
+#  Windows:
+#    if: github.event.pull_request.draft == false
+#    runs-on: windows-2019
+#    needs: [CheckSkipCI]
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        ci_arch:
+#          - x64
+#          - x86
+#        ci_lib_type:
+#          - dll
+#          - lib
+#        ci_build_type:
+#          - dbg
+#          - rel
+#        ci_compiler:
+#          - msvc
+#          - mingw
+#
+#    env:
+#      ci_platform: windows
+#      ci_arch: ${{ matrix.ci_arch }}
+#      ci_lib_type: ${{ matrix.ci_lib_type }}
+#      ci_build_type: ${{ matrix.ci_build_type }}
+#      ci_compiler: ${{ matrix.ci_compiler }}
+#      ci_artifacts: ${{ (
+#                          github.ref == 'refs/heads/master'           ||
+#                          startsWith(github.ref, 'refs/tags/nuget/')  ||
+#                          startsWith(github.ref, 'refs/heads/nuget/')
+#                        )                                             &&
+#                        (matrix.ci_build_type == 'rel')               &&
+#                        (matrix.ci_arch == 'x64')                     &&
+#                        (matrix.ci_lib_type == 'dll')                 &&
+#                        (matrix.ci_compiler == 'msvc')
+#                    }}
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: ${{ env.ci_source_dir }}
+#          fetch-depth: 1
+#
+#      - name: Build Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ env.CCACHE_DIR }}
+#          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}-${{ github.sha }}
+#          restore-keys: |
+#            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}
+#
+#      - name: Setup dotnet
+#        uses: actions/setup-dotnet@v1
+#        if: matrix.ci_lib_type == 'dll'
+#        with:
+#          dotnet-version: ${{ env.DOTNET_VERSION }}
+#
+#      - name: Setup cmake
+#        # FIXME: CMake installed by this action fails with MinGW because it can find 'C:/Program Files/Git/usr/bin/sh.exe' on PATH.
+#        if: matrix.ci_compiler != 'mingw'
+#        uses: jwlawson/actions-setup-cmake@v1.8
+#        with:
+#          cmake-version: '${{ env.CMAKE_VERSION }}'
+#
+#      - name: Dependencies
+#        shell: bash
+#        run: ${{ env.ci_build_script }} dependencies
+#
+#      - name: Generate
+#        shell: bash
+#        run: ${{ env.ci_build_script }} generate
+#
+#      - name: Build
+#        shell: bash
+#        run: ${{ env.ci_build_script }} build-${{ env.ci_compiler }}
+#
+#      - name: Test
+#        if: matrix.ci_compiler == 'msvc'
+#        shell: bash
+#        run: ${{ env.ci_build_script }} test
+#
+#      - name: Install
+#        shell: bash
+#        run: ${{ env.ci_build_script }} install
+#
+#      - uses: actions/upload-artifact@v2
+#        if: env.ci_artifacts == 'true'
+#        with:
+#          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
+#          path: ${{ env.ci_sdk_dir }}
+#
+#  UWP:
+#    if: github.event.pull_request.draft == false
+#    runs-on: windows-2019
+#    needs: [CheckSkipCI]
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        ci_arch:
+#          - x64
+#          - arm
+#          - arm64
+#        ci_lib_type:
+#          - dll
+#          - lib
+#        ci_build_type:
+#          - dbg
+#          - rel
+#        ci_compiler:
+#          - msvc
+#
+#    env:
+#      ci_platform: uwp
+#      ci_arch: ${{ matrix.ci_arch }}
+#      ci_lib_type: ${{ matrix.ci_lib_type }}
+#      ci_build_type: ${{ matrix.ci_build_type }}
+#      ci_compiler: ${{ matrix.ci_compiler }}
+#      ci_artifacts: ${{ (
+#                          github.ref == 'refs/heads/master'           ||
+#                          startsWith(github.ref, 'refs/tags/nuget/')  ||
+#                          startsWith(github.ref, 'refs/heads/nuget/')
+#                        )                                             &&
+#                        (matrix.ci_build_type == 'rel')               &&
+#                        (matrix.ci_arch == 'x64')                     &&
+#                        (matrix.ci_lib_type == 'dll')                 &&
+#                        (matrix.ci_compiler == 'msvc')
+#                    }}
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: ${{ env.ci_source_dir }}
+#          fetch-depth: 1
+#
+#      - name: Build Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ env.CLCACHE_DIR }}
+#          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ github.sha }}
+#          restore-keys: |
+#            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}
+#
+#      - name: Setup dotnet
+#        uses: actions/setup-dotnet@v1
+#        if: matrix.ci_lib_type == 'dll'
+#        with:
+#          dotnet-version: ${{ env.DOTNET_VERSION }}
+#
+#      - name: Setup cmake
+#        uses: jwlawson/actions-setup-cmake@v1.8
+#        with:
+#          cmake-version: '${{ env.CMAKE_VERSION }}'
+#
+#      - name: Dependencies
+#        shell: bash
+#        run: ${{ env.ci_build_script }} dependencies
+#
+#      - name: Generate
+#        shell: bash
+#        run: ${{ env.ci_build_script }} generate
+#
+#      - name: Build
+#        shell: bash
+#        run: ${{ env.ci_build_script }} build-${{ env.ci_compiler }}
+#
+#      - name: Install
+#        shell: bash
+#        run: ${{ env.ci_build_script }} install
+#
+#      - uses: actions/upload-artifact@v2
+#        if: env.ci_artifacts == 'true'
+#        with:
+#          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
+#          path: ${{ env.ci_sdk_dir }}
+#
+#  Linux:
+#    if: github.event.pull_request.draft == false
+#    runs-on: ubuntu-20.04
+#    needs: [CheckSkipCI]
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        ci_arch:
+#          - x64
+#          # - x86           # TODO: Build script does not implement this fully.
+#        ci_lib_type:
+#          - dll
+#          - lib
+#        ci_build_type:
+#          - dbg
+#          - rel
+#        ci_compiler:
+#          - gcc
+#          - clang
+#
+#    env:
+#      ci_platform: linux
+#      ci_arch: ${{ matrix.ci_arch }}
+#      ci_lib_type: ${{ matrix.ci_lib_type }}
+#      ci_build_type: ${{ matrix.ci_build_type }}
+#      ci_compiler: ${{ matrix.ci_compiler }}
+#      ci_artifacts: ${{ (
+#                          github.ref == 'refs/heads/master'           ||
+#                          startsWith(github.ref, 'refs/tags/nuget/')  ||
+#                          startsWith(github.ref, 'refs/heads/nuget/')
+#                        )                                             &&
+#                        (matrix.ci_build_type == 'rel')               &&
+#                        (matrix.ci_arch == 'x64')                     &&
+#                        (matrix.ci_lib_type == 'dll')                 &&
+#                        (matrix.ci_compiler == 'gcc')
+#                    }}
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: ${{ env.ci_source_dir }}
+#          fetch-depth: 1
+#
+#      - name: Build Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ env.CCACHE_DIR }}
+#          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}-${{ github.sha }}
+#          restore-keys: |
+#            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}
+#
+#      - name: Setup dotnet
+#        uses: actions/setup-dotnet@v1
+#        if: matrix.ci_lib_type == 'dll'
+#        with:
+#          dotnet-version: ${{ env.DOTNET_VERSION }}
+#
+#      - name: Setup cmake
+#        uses: jwlawson/actions-setup-cmake@v1.8
+#        with:
+#          cmake-version: '${{ env.CMAKE_VERSION }}'
+#
+#      - name: Dependencies
+#        shell: bash
+#        run: ${{ env.ci_build_script }} dependencies
+#
+#      - name: Generate
+#        shell: bash
+#        run: ${{ env.ci_build_script }} generate
+#
+#      - name: Build
+#        shell: bash
+#        run: ${{ env.ci_build_script }} build
+#
+#      - name: Test
+#        shell: bash
+#        run: ${{ env.ci_build_script }} test
+#
+#      - name: Install
+#        shell: bash
+#        run: ${{ env.ci_build_script }} install
+#
+#      - uses: actions/upload-artifact@v2
+#        if: env.ci_artifacts == 'true'
+#        with:
+#          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
+#          path: ${{ env.ci_sdk_dir }}
+#
+#  MacOS:
+#    if: github.event.pull_request.draft == false
+#    runs-on: macos-11
+#    needs: [CheckSkipCI]
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        ci_arch:
+#          - x64
+#          # - x86           # TODO: Untested.
+#        ci_lib_type:
+#          - dll
+#          - lib
+#        ci_build_type:
+#          - dbg
+#          - rel
+#        ci_compiler:
+#          - clang
+#
+#    env:
+#      ci_platform: macos
+#      ci_arch: ${{ matrix.ci_arch }}
+#      ci_lib_type: ${{ matrix.ci_lib_type }}
+#      ci_build_type: ${{ matrix.ci_build_type }}
+#      ci_compiler: ${{ matrix.ci_compiler }}
+#      ci_artifacts: ${{ (
+#                          github.ref == 'refs/heads/master'           ||
+#                          startsWith(github.ref, 'refs/tags/nuget/')  ||
+#                          startsWith(github.ref, 'refs/heads/nuget/')
+#                        )                                             &&
+#                        (matrix.ci_build_type == 'rel')               &&
+#                        (matrix.ci_arch == 'x64')                     &&
+#                        (matrix.ci_lib_type == 'dll')                 &&
+#                        (matrix.ci_compiler == 'clang')
+#                    }}
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: ${{ env.ci_source_dir }}
+#          fetch-depth: 1
+#
+#      - name: Build Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ env.CCACHE_DIR }}
+#          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}-${{ github.sha }}
+#          restore-keys: |
+#            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_arch }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ matrix.ci_compiler }}
+#
+#      - name: Bash
+#        shell: bash
+#        run: brew install bash
+#
+#      - name: Setup dotnet
+#        uses: actions/setup-dotnet@v1
+#        if: matrix.ci_lib_type == 'dll'
+#        with:
+#          dotnet-version: ${{ env.DOTNET_VERSION }}
+#
+#      - name: Setup cmake
+#        uses: jwlawson/actions-setup-cmake@v1.8
+#        with:
+#          cmake-version: '${{ env.CMAKE_VERSION }}'
+#
+#      - name: Dependencies
+#        shell: bash
+#        run: ${{ env.ci_build_script }} dependencies
+#
+#      - name: Generate
+#        shell: bash
+#        run: ${{ env.ci_build_script }} generate
+#
+#      - name: Build
+#        shell: bash
+#        run: ${{ env.ci_build_script }} build
+#
+#      - name: Install
+#        shell: bash
+#        run: ${{ env.ci_build_script }} install
+#
+#      - uses: actions/upload-artifact@v2
+#        if: env.ci_artifacts == 'true'
+#        with:
+#          name: 'rbfx-${{ github.job }}-${{ matrix.ci_arch }}-${{ github.sha }}'
+#          path: ${{ env.ci_sdk_dir }}
+#
+#  Android:
+#    if: github.event.pull_request.draft == false
+#    runs-on: ubuntu-20.04
+#    needs: [CheckSkipCI]
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        ci_build_type:
+#          - dbg
+#          - rel
+#
+#    env:
+#      ci_platform: android
+#      ci_arch: ${{ matrix.ci_arch }}
+#      ci_lib_type: ${{ matrix.ci_lib_type }}
+#      ci_build_type: ${{ matrix.ci_build_type }}
+#      ci_compiler: ${{ matrix.ci_compiler }}
+#      ci_artifacts: ${{ (
+#                          github.ref == 'refs/heads/master'           ||
+#                          startsWith(github.ref, 'refs/tags/nuget/')  ||
+#                          startsWith(github.ref, 'refs/heads/nuget/')
+#                        )                                             &&
+#                        (matrix.ci_build_type == 'rel')
+#                    }}
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: ${{ env.ci_source_dir }}
+#          fetch-depth: 1
+#
+#      - name: Build Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ env.CCACHE_DIR }}
+#          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_build_type }}-${{ github.sha }}
+#          restore-keys: |
+#            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_build_type }}
+#
+#      - name: Setup dotnet
+#        uses: actions/setup-dotnet@v1
+#        if: matrix.ci_lib_type == 'dll'
+#        with:
+#          dotnet-version: ${{ env.DOTNET_VERSION }}
+#
+#      - name: Setup cmake
+#        uses: jwlawson/actions-setup-cmake@v1.8
+#        with:
+#          cmake-version: '${{ env.CMAKE_VERSION }}'
+#
+#      - name: Dependencies
+#        shell: bash
+#        run: ${{ env.ci_build_script }} dependencies
+#
+#      - name: Generate
+#        shell: bash
+#        run: ${{ env.ci_build_script }} generate
+#
+#      - name: Build
+#        shell: bash
+#        run: ${{ env.ci_build_script }} build-android
+#
+#      - uses: actions/upload-artifact@v2
+#        if: env.ci_artifacts == 'true'
+#        with:
+#          name: 'rbfx-${{ github.job }}-${{ github.sha }}'
+#          path: '**/*.apk'
+#
+#  iOS:
+#    if: github.event.pull_request.draft == false
+#    runs-on: macos-11
+#    needs: [CheckSkipCI]
+#
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        ci_lib_type:
+#          # - dll           # TODO: Linker error failing to find SDL_main.
+#          - lib
+#        ci_build_type:
+#          - dbg
+#          - rel
+#
+#    env:
+#      ci_platform: ios
+#      ci_arch: ${{ matrix.ci_arch }}
+#      ci_lib_type: ${{ matrix.ci_lib_type }}
+#      ci_build_type: ${{ matrix.ci_build_type }}
+#      ci_compiler: ${{ matrix.ci_compiler }}
+#      ci_artifacts: ${{ (
+#                          github.ref == 'refs/heads/master'           ||
+#                          startsWith(github.ref, 'refs/tags/nuget/')  ||
+#                          startsWith(github.ref, 'refs/heads/nuget/')
+#                        )                                             &&
+#                        (matrix.ci_build_type == 'rel')
+#                    }}
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: ${{ env.ci_source_dir }}
+#          fetch-depth: 1
+#
+#      - name: Build Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ env.CCACHE_DIR }}
+#          key: ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}-${{ github.sha }}
+#          restore-keys: |
+#            ${{ env.ccache_prefix }}-${{ github.job }}-${{ matrix.ci_lib_type }}-${{ matrix.ci_build_type }}
+#
+#      - name: Setup dotnet
+#        uses: actions/setup-dotnet@v1
+#        if: matrix.ci_lib_type == 'dll'
+#        with:
+#          dotnet-version: ${{ env.DOTNET_VERSION }}
+#
+#      - name: Setup cmake
+#        uses: jwlawson/actions-setup-cmake@v1.8
+#        with:
+#          cmake-version: '${{ env.CMAKE_VERSION }}'
+#
+#      - name: Bash
+#        shell: bash
+#        run: brew install bash
+#
+#      - name: Dependencies
+#        shell: bash
+#        run: ${{ env.ci_build_script }} dependencies
+#
+#      - name: Generate
+#        shell: bash
+#        run: ${{ env.ci_build_script }} generate
+#
+#      - name: Build
+#        shell: bash
+#        run: ${{ env.ci_build_script }} build
+#
+#      - uses: actions/upload-artifact@v2
+#        if: env.ci_artifacts == 'true'
+#        with:
+#          name: 'rbfx-${{ github.job }}-${{ github.sha }}'
+#          path: '**/*.app'
 
   Web:
     if: github.event.pull_request.draft == false
@@ -564,7 +564,7 @@ jobs:
         ci_lib_type:
           - lib
         ci_build_type:
-          - dbg
+#          - dbg
           - rel
 
     env:
@@ -626,37 +626,37 @@ jobs:
           name: 'rbfx-${{ github.job }}-${{ github.sha }}'
           path: ${{ env.ci_sdk_dir }}
 
-  NuGet:
-    runs-on: ubuntu-20.04
-    if: ${{ startsWith(github.ref, 'refs/tags/nuget/') || startsWith(github.ref, 'refs/heads/nuget/') }}
-    needs:
-      - Windows
-      - UWP
-      - MacOS
-      - Android
-      - iOS
-      - Web
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          path: source-code
-          fetch-depth: 1
-
-      - name: Get short SHA
-        id: vars
-        run: echo "::set-output name=sha_short::$(echo ${GITHUB_SHA} | cut -c1-7)"
-
-      - uses: actions/download-artifact@v2
-        with:
-          path: source-code/packaging/nuget/
-
-      - name: Nuget
-        shell: bash
-        working-directory: source-code/packaging/nuget/
-        run: |
-          ./package.sh
-          for pkg in out/*.nupkg;
-          do
-            dotnet nuget push $pkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
-          done
+#  NuGet:
+#    runs-on: ubuntu-20.04
+#    if: ${{ startsWith(github.ref, 'refs/tags/nuget/') || startsWith(github.ref, 'refs/heads/nuget/') }}
+#    needs:
+#      - Windows
+#      - UWP
+#      - MacOS
+#      - Android
+#      - iOS
+#      - Web
+#    continue-on-error: true
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          path: source-code
+#          fetch-depth: 1
+#
+#      - name: Get short SHA
+#        id: vars
+#        run: echo "::set-output name=sha_short::$(echo ${GITHUB_SHA} | cut -c1-7)"
+#
+#      - uses: actions/download-artifact@v2
+#        with:
+#          path: source-code/packaging/nuget/
+#
+#      - name: Nuget
+#        shell: bash
+#        working-directory: source-code/packaging/nuget/
+#        run: |
+#          ./package.sh
+#          for pkg in out/*.nupkg;
+#          do
+#            dotnet nuget push $pkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+#          done

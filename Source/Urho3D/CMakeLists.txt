@@ -164,7 +164,7 @@ if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/librevision.h)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_QUIET ERROR_QUIET)
 endif ()
 
-# Link dependencies
+# Public dependencies (users may use them in their projects)
 set (THIRD_PARTY_DEPENDENCIES
     FreeType
     LZ4
@@ -192,18 +192,19 @@ set (THIRD_PARTY_DEPENDENCIES
     fmt
     spdlog
     EASTL
-    entt
     ETCPACK
     xatlas
     embree
     RmlUi
     glslang
+    tinygltf
     SPIRV
     spirv-cross-core
     spirv-cross-glsl
     spirv-cross-msl
     spirv-cross-hlsl
-    tinygltf
+    DiligentGraphicsD3D11
+    DiligentGraphicsOpenGL
 )
 
 if (URHO3D_MERGE_STATIC_LIBS)

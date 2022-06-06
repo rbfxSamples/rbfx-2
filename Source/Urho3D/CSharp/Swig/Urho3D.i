@@ -353,7 +353,7 @@ namespace SDL
 %ignore Urho3D::Engine::DefineParameters;
 %ignore Urho3D::Application::engine_;
 %ignore Urho3D::Application::GetCommandLineParser;
-%ignore Urho3D::PluginApplication::PluginApplicationMain;
+%ignore Urho3D::PluginApplicationMain;
 %ignore Urho3D::PluginApplication::Dispose;
 
 %include "generated/Urho3D/_pre_engine.i"

@@ -420,7 +420,7 @@ namespace eastl
 	template <typename T, size_t Extent>
 	EA_CONSTEXPR bool span<T, Extent>::bounds_check(size_t sz) const
 	{
-		return (sz >= 0 && sz < size());
+		return (sz >= 0 && sz <= size()); // rbfx: Undo this change on EASTL update
 	}
 }
 
